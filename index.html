@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>R6X SCAN</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Share+Tech+Mono&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #050505;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+      color: #fff;
+    }
+    /* CRT / retro computer background */
+    .retro-bg {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      background: radial-gradient(circle at 30% 20%, #0a0c14, #010101);
+    }
+    .retro-bg::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(0deg, rgba(0,255,65,0.03) 0px, rgba(0,255,65,0.03) 2px, transparent 2px, transparent 8px),
+                        repeating-linear-gradient(90deg, rgba(255,0,34,0.02) 0px, rgba(255,0,34,0.02) 1px, transparent 1px, transparent 12px);
+      pointer-events: none;
+    }
+    .retro-bg::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,0.25) 51%);
+      background-size: 100% 4px;
+      pointer-events: none;
+      opacity: 0.3;
+    }
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: #ff2200; border-radius: 4px; }
+
+    /* GPU LOADER OVERLAY (realistic) */
+    #gpu-loader {
+      position: fixed;
+      inset: 0;
+      background: #050505;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      transition: opacity 0.6s ease;
+    }
+    .gpu-card {
+      background: linear-gradient(145deg, #121212, #070707);
+      border: 1px solid #ff220055;
+      border-radius: 20px;
+      padding: 28px;
+      width: 360px;
+      box-shadow: 0 0 60px rgba(255,34,0,0.3);
+      position: relative;
+      overflow: hidden;
+    }
+    .gpu-fans {
+      display: flex;
+      gap: 28px;
+      justify-content: center;
+      margin: 16px 0;
+    }
+    .fan-svg {
+      width: 80px;
+      height: 80px;
+      animation: spinFan 0.35s linear infinite;
+    }
+    @keyframes spinFan {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .rgb-strip {
+      height: 4px;
+      background: linear-gradient(90deg, #ff0000, #ff7700, #ffff00, #00ff00, #00ffff, #ff00ff, #ff0000);
+      background-size: 200% auto;
+      animation: rgbShift 1.2s linear infinite;
+      border-radius: 4px;
+      margin: 12px 0;
+    }
+    @keyframes rgbShift { 0% { background-position: 0% 0%; } 100% { background-position: 200% 0%; } }
+    .loader-bar-wrap { width: 340px; height: 6px; background: #1a1a1a; border-radius: 4px; overflow: hidden; }
+    .loader-bar { width: 0%; height: 100%; background: #ff2200; transition: width 0.05s linear; box-shadow: 0 0 8px red; }
+    .loader-text { font-family: 'Orbitron', monospace; font-size: 14px; letter-spacing: 2px; }
+
+    /* main app container */
+    .app-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    section { padding: 70px 0; border-bottom: 1px solid #1f1f2a; }
+    .section-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: #ff2200;
+      border-left: 3px solid #ff2200;
+      padding-left: 12px;
+      margin-bottom: 16px;
+    }
+    h2 { font-size: clamp(28px, 4vw, 44px); font-family: 'Orbitron', monospace; margin-bottom: 16px; }
+    h2 span { color: #ff2200; }
+
+    /* GPU SIMULATOR TAB (real-time scanning simulation) */
+    .sim-tab {
+      background: #0b0e16dd;
+      backdrop-filter: blur(12px);
+      border: 1px solid #ff220044;
+      border-radius: 28px;
+      padding: 24px;
+      margin: 40px 0 20px;
+      transition: all 0.2s;
+    }
+    .sim-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #2a2a3a;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+    .gpu-live-stats {
+      display: flex;
+      gap: 24px;
+    }
+    .stat-badge {
+      background: #11131f;
+      padding: 6px 16px;
+      border-radius: 40px;
+      font-family: monospace;
+    }
+    .sim-progress {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+    .sim-log {
+      background: #010101cc;
+      border-radius: 16px;
+      padding: 12px;
+      height: 150px;
+      overflow-y: auto;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      color: #0f0;
+      border: 1px solid #2a2a3a;
+    }
+    .editable-config {
+      background: #0c0f1a;
+      border-radius: 20px;
+      padding: 16px;
+      margin-top: 20px;
+    }
+    .config-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin: 12px 0;
+    }
+    .config-row input {
+      background: #000;
+      border: 1px solid #ff2200;
+      padding: 6px 12px;
+      color: #ffaa88;
+      border-radius: 20px;
+      width: 80px;
+    }
+    button {
+      background: linear-gradient(135deg, #cc0000, #ff2200);
+      border: none;
+      padding: 10px 24px;
+      border-radius: 40px;
+      font-weight: bold;
+      font-family: 'Orbitron', monospace;
+      color: white;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:hover { transform: scale(1.02); box-shadow: 0 0 14px #ff2200; }
+    .grid-3, .features-grid, .detects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; margin-top: 32px; }
+    .glass-card {
+      background: rgba(20, 20, 30, 0.6);
+      backdrop-filter: blur(6px);
+      border: 1px solid #2a2a3a;
+      border-radius: 20px;
+      padding: 24px;
+      transition: 0.2s;
+    }
+    .glass-card:hover { border-color: #ff2200; transform: translateY(-4px); }
+    .gallery-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 20px;
+    }
+    .thumb {
+      width: 140px;
+      height: 100px;
+      background: #1e1e2e;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: 1px solid #333;
+      transition: 0.2s;
+    }
+    .thumb:hover { border-color: #ff2200; transform: scale(1.02); }
+    footer {
+      display: flex;
+      justify-content: space-between;
+      padding: 30px 0 20px;
+      font-size: 12px;
+      color: #aaa;
+    }
+    @media (max-width: 700px) {
+      .sim-header { flex-direction: column; gap: 12px; }
+      .gpu-live-stats { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="gpu-loader">
+  <div class="gpu-card">
+    <div style="font-family: Orbitron; font-size:12px; color:#ff2200;">R6X SPU — INIT</div>
+    <div class="gpu-fans">
+      <svg class="fan-svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="28" fill="none" stroke="#ff2200" stroke-width="2"/><path d="M40,12 L44,28 L40,44 L36,28 Z" fill="#ff4422"/><path d="M68,40 L52,44 L36,40 L52,36 Z" fill="#cc0000"/><circle cx="40" cy="40" r="6" fill="#222"/></svg>
+      <svg class="fan-svg" style="animation-duration:0.28s" viewBox="0 0 80 80"><circle cx="40" cy="40" r="28" fill="none" stroke="#ff2200" stroke-width="2"/><path d="M40,12 L44,28 L40,44 L36,28 Z" fill="#ff6644"/><path d="M68,40 L52,44 L36,40 L52,36 Z" fill="#aa0000"/><circle cx="40" cy="40" r="6" fill="#222"/></svg>
+    </div>
+    <div class="rgb-strip"></div>
+    <div class="loader-bar-wrap"><div class="loader-bar" id="loaderBar"></div></div>
+    <div class="loader-text" id="loaderPct">0%</div>
+    <div class="loader-text" style="font-size:10px;" id="loaderStatus">Initializing GPU security core...</div>
+  </div>
+</div>
+
+<div class="retro-bg"></div>
+<div class="app-container">
+  <!-- HERO -->
+  <section style="padding-top: 30px;">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 40px;">
+      <div>
+        <div style="font-family: Orbitron; background:#ff220022; display:inline-block; padding:4px 16px; border-radius:40px;">⚡ ACTIVE v2.1.0</div>
+        <h1 style="font-size: 72px; margin-top: 20px;">R6X <span style="color:#ff2200;">SCAN</span></h1>
+        <p style="font-size:18px; color:#ccc; max-width:500px;">GPU‑Style Security Scanner for Rainbow Six Siege — deep cheat detection, macro analysis & Discord integration.</p>
+        <div style="margin: 28px 0; display: flex; gap: 16px;">
+          <button id="downloadBtnMain"><i class="fas fa-download"></i> DOWNLOAD .EXE</button>
+          <button id="scrollToSim"><i class="fas fa-terminal"></i> OPEN SIMULATOR</button>
+        </div>
+      </div>
+      <canvas id="heroCanvas" width="400" height="320" style="background:#0a0c14; border-radius:24px; border:1px solid #ff220044;"></canvas>
+    </div>
+  </section>
+
+  <!-- GPU SIMULATOR TAB (full interactive simulation) -->
+  <div class="sim-tab" id="simulatorPanel">
+    <div class="sim-header">
+      <div><i class="fas fa-microchip" style="color:#ff2200;"></i> <strong>R6X LIVE SCAN SIMULATOR</strong> — real-time system analysis</div>
+      <div class="gpu-live-stats">
+        <div class="stat-badge"><i class="fas fa-tachometer-alt"></i> <span id="simRpm">1240</span> RPM</div>
+        <div class="stat-badge"><i class="fas fa-thermometer-half"></i> <span id="simTemp">58</span>°C</div>
+        <div class="stat-badge"><i class="fas fa-memory"></i> VRAM <span id="simVram">4.2</span> GB</div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+      <div style="flex:2;">
+        <div class="sim-progress">
+          <div><div class="progress-label">🔍 Registry Trace</div><div class="bar-bg"><div class="bar-fill" id="regFillSim" style="width:0%"></div></div><span id="regPctSim">0%</span></div>
+          <div><div class="progress-label">⚡ Prefetch Analysis</div><div class="bar-bg"><div class="bar-fill" id="preFillSim" style="width:0%"></div></div><span id="prePctSim">0%</span></div>
+          <div><div class="progress-label">📁 File System Scan</div><div class="bar-bg"><div class="bar-fill" id="fileFillSim" style="width:0%"></div></div><span id="filePctSim">0%</span></div>
+          <div><div class="progress-label">🖱️ GHUB Macro Detection</div><div class="bar-bg"><div class="bar-fill" id="ghubFillSim" style="width:0%"></div></div><span id="ghubPctSim">0%</span></div>
+        </div>
+        <div class="sim-log" id="simLog">
+          <div>> R6X Simulator ready. Click "START SIMULATION"</div>
+          <div>> GPU security module online</div>
+        </div>
+        <div style="margin-top: 12px; display: flex; gap: 12px;">
+          <button id="startSimBtn"><i class="fas fa-play"></i> START SIMULATION</button>
+          <button id="resetSimBtn"><i class="fas fa-sync-alt"></i> RESET</button>
+        </div>
+      </div>
+      <div style="flex:1.2; background:#0b0e18; border-radius:20px; padding:16px;">
+        <div style="font-family: Orbitron; font-size:12px;">⚙️ REAL STATS (EDITABLE)</div>
+        <div class="config-row"><label>Registry traces:</label><input type="number" id="cfgReg" value="147"></div>
+        <div class="config-row"><label>Prefetch entries:</label><input type="number" id="cfgPref" value="92"></div>
+        <div class="config-row"><label>Files found:</label><input type="number" id="cfgFiles" value="2103"></div>
+        <div class="config-row"><label>GHUB scripts:</label><input type="number" id="cfgGhub" value="4"></div>
+        <div class="config-row"><label>R6 Accounts:</label><input type="number" id="cfgR6" value="2"></div>
+        <div class="config-row"><label>Suspicious flags:</label><input type="number" id="cfgSus" value="6"></div>
+        <div class="config-row"><label>Discord ID (demo):</label><input type="text" id="demoUserId" placeholder="7123456789" value="123456789012345678"></div>
+        <button id="applyConfigBtn" style="background:#222; margin-top:8px;">APPLY CONFIG & UPDATE FINDINGS</button>
+        <div id="findingsPreview" style="margin-top:14px; font-size:11px; max-height:140px; overflow-y:auto;"></div>
+      </div>
+    </div>
+    <div class="editable-config">
+      <span><i class="fas fa-image"></i> Freelancing media simulation (mock)</span>
+      <div style="display: flex; gap: 12px; margin-top: 8px;">
+        <div class="thumb" id="mockImgTrigger"><i class="fas fa-image fa-2x"></i><span style="margin-left:6px;">preview.png</span></div>
+        <div class="thumb" id="mockVideoTrigger"><i class="fab fa-youtube fa-2x"></i><span>demo_embed</span></div>
+      </div>
+      <div id="mediaPreview" style="margin-top: 10px; font-size:11px; color:#aaa;"></div>
+    </div>
+  </div>
+
+  <!-- rest of original sections (About, features, gallery etc) -->
+  <section id="about"><div class="section-label">ABOUT R6X</div><h2>What is <span>R6X Scanner</span>?</h2><p>GPU‑Style security scanner for Windows — detects cheats, injectors, recoil macros, and suspicious activity. Fully integrated with Discord bot, key‑based access system, and real‑time reporting.</p><div style="display:flex; gap:12px; margin-top:20px;"><div class="glass-card"><i class="fas fa-shield-alt"></i> Anti-Cheat Core</div><div class="glass-card"><i class="fab fa-discord"></i> Slash Commands</div><div class="glass-card"><i class="fas fa-key"></i> Key Access</div></div></section>
+
+  <section id="how"><div class="section-label">PROCESS</div><h2>How It <span>Works</span></h2><div class="grid-3"><div class="glass-card"><div class="step-num">01</div><h3>Get Scan Key</h3><p>Admin generates key via /gen on Discord</p></div><div class="glass-card"><div class="step-num">02</div><h3>Enter User ID</h3><p>Input Discord ID + key in scanner</p></div><div class="glass-card"><div class="step-num">03</div><h3>System Analysis</h3><p>10‑20s deep scan (registry, prefetch, files)</p></div><div class="glass-card"><div class="step-num">04</div><h3>Receive Report</h3><p>Full report + .txt log sent to Discord</p></div></div></section>
+
+  <section id="features"><div class="section-label">FEATURES</div><h2>Detection <span>Capabilities</span></h2><div class="features-grid"><div class="glass-card"><i class="fas fa-database"></i> Registry Trace Detection</div><div class="glass-card"><i class="fas fa-history"></i> Prefetch Analysis</div><div class="glass-card"><i class="fas fa-folder-open"></i> File Scanner</div><div class="glass-card"><i class="fas fa-gamepad"></i> R6 Account Detection</div><div class="glass-card"><i class="fab fa-steam"></i> Steam Scanner</div><div class="glass-card"><i class="fas fa-mouse-pointer"></i> GHUB Script Detection</div><div class="glass-card"><i class="fas fa-hdd"></i> Device Info</div><div class="glass-card"><i class="fas fa-shield-virus"></i> Security Audit</div></div></section>
+
+  <section id="detects"><div class="section-label">DETECTION</div><h2>What It <span>Detects</span></h2><div class="detects-grid"><div class="glass-card">Cheat Loaders & Injectors</div><div class="glass-card">Recoil Macros (LUA)</div><div class="glass-card">Suspicious Executables</div><div class="glass-card">R6 Siege Usernames</div><div class="glass-card">Steam Accounts Data</div><div class="glass-card">Ban Evasion Indicators</div></div></section>
+
+  <section id="gallery"><div class="section-label">MEDIA GALLERY</div><h2>Preview <span>Gallery</span></h2><div><div style="display:flex; gap:8px;"><button id="uploadMockBtn" class="mock-btn"><i class="fas fa-upload"></i> Simulate Image Upload</button><button id="embedVideoMock" class="mock-btn"><i class="fab fa-youtube"></i> Embed Demo Video</button></div><div class="gallery-grid" id="galleryGrid"><div class="thumb"><i class="fas fa-camera"></i> screenshot_demo.jpg</div><div class="thumb"><i class="fas fa-video"></i> r6x_preview.mp4</div></div><div id="videoMockArea" style="margin-top:12px;"></div></div></section>
+
+  <section id="stats"><div class="section-label">STATISTICS</div><h2>By the <span>Numbers</span></h2><div style="display:flex; gap:28px; flex-wrap:wrap;"><div class="glass-card"><div class="stat-number" data-target="12450">0</div><div>Files Scanned</div></div><div class="glass-card"><div class="stat-number" data-target="6820">0</div><div>Registry Checks</div></div><div class="glass-card"><div class="stat-number" data-target="5">0</div><div>Discord Commands</div></div><div class="glass-card"><div class="stat-number" data-target="12">0</div><div>Detection Types</div></div></div></section>
+
+  <section id="tech"><div class="section-label">TECHNICAL</div><h2>System <span>Requirements</span></h2><div class="glass-card">Standalone .exe | Windows 10/11 | 4GB RAM | Discord account + valid key</div></section>
+
+  <section id="creator"><div class="section-label">CREATOR</div><h2>Contact & <span>Support</span></h2><div class="glass-card">Discord: xotiic._.420 &nbsp;|&nbsp; <a href="https://discord.gg/SVvZFnct37" target="_blank" style="color:#ff2200;">Support Server</a> &nbsp;|&nbsp; Invite-only key system</div></section>
+
+  <section id="download"><div class="section-label">DOWNLOAD</div><h2>Get <span>R6X Scanner</span></h2><button id="downloadBtnBottom" style="padding:14px 32px;"><i class="fas fa-download"></i> R6X_Scanner.exe (v2.1.0 / 45MB)</button><p style="margin-top:12px;">Windows Defender might flag — add exclusion. Trusted R6 security tool.</p></section>
+
+  <footer><div>R6X SCAN — GPU Security Suite</div><div>discord: xotiic._.420 | © 2025</div></footer>
+</div>
+
+<script>
+  // GPU LOADER SIMULATION
+  let loadProgress = 0;
+  const loaderBar = document.getElementById('loaderBar');
+  const loaderPct = document.getElementById('loaderPct');
+  const loaderStatus = document.getElementById('loaderStatus');
+  const loaderDiv = document.getElementById('gpu-loader');
+  const steps = ["Initializing SPU", "Loading detection modules", "Connecting to GPU shaders", "Calibrating registry engine", "Ready"];
+  let stepIdx = 0;
+  const loadInterval = setInterval(() => {
+    loadProgress += Math.random() * 5 + 2;
+    if (loadProgress >= 100) { loadProgress = 100; clearInterval(loadInterval); setTimeout(() => { loaderDiv.style.opacity = '0'; setTimeout(() => loaderDiv.style.display = 'none', 700); }, 400); }
+    loaderBar.style.width = loadProgress + '%';
+    loaderPct.innerText = Math.floor(loadProgress) + '%';
+    let stepIndex = Math.floor(loadProgress / 25);
+    if (stepIndex < steps.length) loaderStatus.innerText = steps[stepIndex] + '...';
+  }, 55);
+
+  // Hero canvas
+  const canvas = document.getElementById('heroCanvas');
+  if(canvas) {
+    const ctx = canvas.getContext('2d');
+    let angle = 0;
+    function drawHero() {
+      ctx.clearRect(0,0,400,320);
+      ctx.fillStyle = "#0a0c14"; ctx.fillRect(0,0,400,320);
+      ctx.fillStyle = "#ff2200"; ctx.font = "bold 12px Orbitron"; ctx.fillText("R6X GPU CORE", 18, 35);
+      for(let i=0;i<2;i++) {
+        ctx.save(); ctx.translate(110 + i*180, 150); ctx.rotate(angle + i*0.5);
+        ctx.beginPath(); ctx.moveTo(0,-30); ctx.lineTo(10,0); ctx.lineTo(0,30); ctx.lineTo(-10,0); ctx.fillStyle = "#ff4422"; ctx.fill();
+        ctx.beginPath(); ctx.arc(0,0,18,0,Math.PI*2); ctx.fillStyle = "#1a1a2a"; ctx.fill();
+        ctx.restore();
+      }
+      ctx.fillStyle = "#fff"; ctx.font = "10px monospace"; ctx.fillText("RPM: 2850", 280, 280);
+      ctx.fillStyle = "#ffaa33"; ctx.fillRect(30, 290, 180, 8); ctx.fillStyle = "#ff2200"; ctx.fillRect(30, 290, 120, 8);
+      angle += 0.08;
+      requestAnimationFrame(drawHero);
+    }
+    drawHero();
+  }
+
+  // SIMULATION ENGINE + REAL STATS
+  let scanning = false;
+  let simInterval = null;
+  let simProgress = { reg:0, pre:0, file:0, ghub:0 };
+  function updateSimBars() {
+    document.getElementById('regFillSim').style.width = simProgress.reg + '%';
+    document.getElementById('preFillSim').style.width = simProgress.pre + '%';
+    document.getElementById('fileFillSim').style.width = simProgress.file + '%';
+    document.getElementById('ghubFillSim').style.width = simProgress.ghub + '%';
+    document.getElementById('regPctSim').innerText = simProgress.reg + '%';
+    document.getElementById('prePctSim').innerText = simProgress.pre + '%';
+    document.getElementById('filePctSim').innerText = simProgress.file + '%';
+    document.getElementById('ghubPctSim').innerText = simProgress.ghub + '%';
+  }
+  function addSimLog(msg) {
+    const logDiv = document.getElementById('simLog');
+    const p = document.createElement('div');
+    p.innerHTML = `> ${new Date().toLocaleTimeString()} — ${msg}`;
+    logDiv.appendChild(p);
+    p.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if(logDiv.children.length > 20) logDiv.removeChild(logDiv.children[0]);
+  }
+  function renderFindingsPanel() {
+    const reg = parseInt(document.getElementById('cfgReg').value) || 0;
+    const pref = parseInt(document.getElementById('cfgPref').value) || 0;
+    const files = parseInt(document.getElementById('cfgFiles').value) || 0;
+    const ghub = parseInt(document.getElementById('cfgGhub').value) || 0;
+    const r6 = parseInt(document.getElementById('cfgR6').value) || 0;
+    const sus = parseInt(document.getElementById('cfgSus').value) || 0;
+    const preview = document.getElementById('findingsPreview');
+    preview.innerHTML = `<div style="color:#ffaa88;">⚡ REAL STATS SUMMARY</div>
+      <div>📋 Registry: ${reg} traces</div>
+      <div>⚡ Prefetch: ${pref} entries</div>
+      <div>📁 Files: ${files}</div>
+      <div>🖱️ GHUB scripts: ${ghub}</div>
+      <div>🎮 R6 accounts: ${r6}</div>
+      <div>⚠️ Suspicious flags: ${sus} ${sus>4 ? '🔴 HIGH RISK' : '🟡 MEDIUM'}</div>`;
+  }
+  function applyConfig() { renderFindingsPanel(); addSimLog("Config applied — new detection thresholds ready."); }
+  function startSimulation() {
+    if(scanning) { addSimLog("Scan already in progress."); return; }
+    scanning = true;
+    simProgress = { reg:0, pre:0, file:0, ghub:0 };
+    updateSimBars();
+    addSimLog("🚀 R6X scan initiated. GPU security engine engaged.");
+    let stepsDone = 0;
+    simInterval = setInterval(() => {
+      if(!scanning) return;
+      let anyInc = false;
+      if(simProgress.reg < 100) { simProgress.reg += Math.floor(Math.random()*10)+3; if(simProgress.reg>100) simProgress.reg=100; anyInc=true; }
+      if(simProgress.pre < 100) { simProgress.pre += Math.floor(Math.random()*9)+4; if(simProgress.pre>100) simProgress.pre=100; anyInc=true; }
+      if(simProgress.file < 100) { simProgress.file += Math.floor(Math.random()*8)+3; if(simProgress.file>100) simProgress.file=100; anyInc=true; }
+      if(simProgress.ghub < 100) { simProgress.ghub += Math.floor(Math.random()*12)+4; if(simProgress.ghub>100) simProgress.ghub=100; anyInc=true; }
+      updateSimBars();
+      if(simProgress.reg>=100 && simProgress.pre>=100 && simProgress.file>=100 && simProgress.ghub>=100) {
+        clearInterval(simInterval);
+        scanning = false;
+        addSimLog("✅ SCAN COMPLETE — generating final report...");
+        const regV = parseInt(document.getElementById('cfgReg').value);
+        const ghubV = parseInt(document.getElementById('cfgGhub').value);
+        const susV = parseInt(document.getElementById('cfgSus').value);
+        addSimLog(`📊 Registry traces: ${regV} | GHUB macros: ${ghubV} | Suspicious flags: ${susV}`);
+        addSimLog(`📡 Report sent to Discord (simulated). Risk: ${susV>4 ? "HIGH" : "MEDIUM/LOW"}`);
+        document.getElementById('simRpm').innerText = "3120";
+        document.getElementById('simTemp').innerText = "72";
+        document.getElementById('simVram').innerText = "7.8";
+        setTimeout(() => { document.getElementById('simRpm').innerText = "1240"; document.getElementById('simTemp').innerText = "58"; document.getElementById('simVram').innerText = "4.2"; }, 3000);
+      } else if(simProgress.reg > 30 && stepsDone===0) { addSimLog("Scanning registry hives (BAM, MUICache)..."); stepsDone++; }
+      else if(simProgress.pre > 40 && stepsDone===1) { addSimLog("Analyzing prefetch and AppCompatFlags..."); stepsDone++; }
+      else if(simProgress.file > 50 && stepsDone===2) { addSimLog("Scanning Downloads/Desktop for cheat loaders..."); stepsDone++; }
+      else if(simProgress.ghub > 60 && stepsDone===3) { addSimLog("Detecting Logitech GHUB Lua scripts (recoil macros)."); stepsDone++; }
+    }, 260);
+  }
+  function resetSim() {
+    if(scanning) { clearInterval(simInterval); scanning=false; }
+    simProgress = { reg:0, pre:0, file:0, ghub:0 };
+    updateSimBars();
+    addSimLog("🔄 Simulator reset. Ready for new scan.");
+    document.getElementById('simRpm').innerText = "1240"; document.getElementById('simTemp').innerText = "58"; document.getElementById('simVram').innerText = "4.2";
+  }
+  document.getElementById('startSimBtn').addEventListener('click', startSimulation);
+  document.getElementById('resetSimBtn').addEventListener('click', resetSim);
+  document.getElementById('applyConfigBtn').addEventListener('click', applyConfig);
+  renderFindingsPanel();
+
+  // freelancing mock image/video
+  document.getElementById('mockImgTrigger')?.addEventListener('click',()=>{ document.getElementById('mediaPreview').innerHTML = '<i class="fas fa-image"></i> [SIM] screenshot_scan_result.png — GPU-style UI preview.'; });
+  document.getElementById('mockVideoTrigger')?.addEventListener('click',()=>{ document.getElementById('mediaPreview').innerHTML = '<i class="fab fa-youtube"></i> [SIM] Embedded demo: R6X Scanner in action (mock).'; });
+  document.getElementById('uploadMockBtn')?.addEventListener('click',()=>{ const gal = document.getElementById('galleryGrid'); const newThumb = document.createElement('div'); newThumb.className='thumb'; newThumb.innerHTML='<i class="fas fa-file-image"></i> new_preview.png'; gal.appendChild(newThumb); });
+  document.getElementById('embedVideoMock')?.addEventListener('click',()=>{ document.getElementById('videoMockArea').innerHTML = '<div style="background:#000; border-radius:12px; padding:12px;">▶️ SIMULATED VIDEO EMBED (R6X demo)</div>'; });
+  document.getElementById('downloadBtnMain')?.addEventListener('click',()=>alert("Download simulation: R6X_Scanner.exe (mock). Replace with actual URL."));
+  document.getElementById('downloadBtnBottom')?.addEventListener('click',()=>alert("R6X Scanner download triggered (simulated)."));
+  document.getElementById('scrollToSim')?.addEventListener('click',()=>document.getElementById('simulatorPanel').scrollIntoView({behavior:'smooth'}));
+  // animated counters
+  const counters = document.querySelectorAll('.stat-number');
+  const counterObserver = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        const el = entry.target;
+        const target = parseInt(el.dataset.target);
+        let current = 0;
+        const inc = target/40;
+        const upd = setInterval(()=>{ current+=inc; if(current>=target){ el.innerText=target.toLocaleString(); clearInterval(upd); } else el.innerText=Math.floor(current).toLocaleString(); }, 20);
+        counterObserver.unobserve(el);
+      }
+    });
+  },{threshold:0.5});
+  counters.forEach(c=>counterObserver.observe(c));
+  // dynamic GPU live stats simulation during scan
+  setInterval(()=>{
+    if(scanning){
+      let rpm = 2100 + Math.random()*900;
+      let temp = 64 + Math.random()*12;
+      let vram = 6.2 + Math.random()*3;
+      document.getElementById('simRpm').innerText = Math.floor(rpm);
+      document.getElementById('simTemp').innerText = Math.floor(temp);
+      document.getElementById('simVram').innerText = vram.toFixed(1);
+    } else {
+      document.getElementById('simRpm').innerText = Math.floor(1100 + Math.random()*300);
+      document.getElementById('simTemp').innerText = Math.floor(45 + Math.random()*8);
+      document.getElementById('simVram').innerText = (3.2+Math.random()*1.5).toFixed(1);
+    }
+  }, 1500);
+</script>
+<style>
+  .progress-label { font-size: 11px; margin-bottom: 4px; color: #bbb; }
+  .bar-bg { background: #1e1e2a; height: 6px; border-radius: 10px; width: 100%; margin-bottom: 6px; }
+  .bar-fill { background: linear-gradient(90deg, #ff3300, #ffaa33); width: 0%; height: 6px; border-radius: 10px; transition: width 0.1s; }
+  .mock-btn { background: #1f1f2e; border: 1px solid #ff2200; padding: 6px 12px; border-radius: 30px; cursor: pointer; margin-top: 6px; }
+</style>
+</body>
+</html>
