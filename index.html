@@ -1237,7 +1237,10 @@ async function recordDownload() {
   link.click();
   document.body.removeChild(link);
 }
-
+  document.getElementById('dlHero').addEventListener('click', recordDownload);
+  document.getElementById('dlBottom').addEventListener('click', recordDownload);
+  fetchStats();
+  setInterval(fetchStats, 10000);
 // ============ COUNTER ANIM ============
 const counters = document.querySelectorAll('.stat-big');
 const obs = new IntersectionObserver(entries => {
