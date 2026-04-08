@@ -1172,7 +1172,7 @@ const li = setInterval(() => {
 
 // ============ BACKEND STATS ============
 const API_BASE = "https://pcchekerb.onrender.com";
-const API_KEY = "r6x_super_secret_key_2025";
+const API_KEY = "rnd_1dDTCvkuOAgIQct01NsecVGrZJZx";
 let stats = { totalScans: 342, totalDownloads: 1289, totalFilesScanned: 87432 };
 
 function setStats(s) {
@@ -1215,6 +1215,8 @@ async function recordDownload() {
   stats.totalDownloads++;
   setStats(stats);
   addLog(`📥 New download — total: ${stats.totalDownloads.toLocaleString()}`, 'warn');
+  
+  // Record download on backend
   try {
     await fetch(`${API_BASE}/api/download`, {
       method: 'POST',
@@ -1222,13 +1224,19 @@ async function recordDownload() {
       body: JSON.stringify({ user_id: null })
     });
   } catch {}
-  alert("R6X_Scanner.exe download started!\n\nNote: Replace download URL with hosted .exe location.");
+  
+  // ========== REPLACE THIS WITH YOUR ACTUAL DOWNLOAD URL ==========
+  const downloadUrl = "https://www.dropbox.com/scl/fi/lt8zoucbhq35lyqhumbub/R6X_Scanner.exe?rlkey=natflmd2f3viv7mi3dk6qikzc&e=1&st=h9nr1j9o&dl=0e";
+  // =================================================================
+  
+  // Trigger download
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = "R6X_Scanner.exe";  // Forces download instead of opening
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
-
-document.getElementById('dlHero').addEventListener('click', recordDownload);
-document.getElementById('dlBottom').addEventListener('click', recordDownload);
-fetchStats();
-setInterval(fetchStats, 10000);
 
 // ============ COUNTER ANIM ============
 const counters = document.querySelectorAll('.stat-big');
